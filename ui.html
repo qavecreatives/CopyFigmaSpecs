@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root { color-scheme: dark; font: 12px Inter, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; color: #CBE3FF; background: #1A1113; }
+    h1 { margin: 0 0 4px; font-size: 15px; }
+    #status { margin-bottom: 14px; color: #CBE3FF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    label { display: block; margin: 9px 0; color: #CBE3FF; }
+    input { margin-right: 7px; accent-color: #CBE3FF; }
+    textarea { width: 100%; height: 420px; resize: none; padding: 10px; border: 1px solid #CBE3FF; border-radius: 6px; color: #CBE3FF; background: #24191C; font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    button { width: 100%; margin-top: 12px; padding: 10px; border: 0; border-radius: 6px; color: #1A1113; background: #CBE3FF; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: .45; cursor: default; }
+    #feedback { min-height: 18px; margin-top: 8px; color: #CBE3FF; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Copy Figma Specs</h1>
+  <div id="status">Select a layer to inspect.</div>
+  <label><input id="children" type="checkbox" checked> Include children</label>
+  <label><input id="ids" type="checkbox"> Include layer IDs</label>
+  <textarea id="output" readonly placeholder="Your Figma specs will appear here."></textarea>
+  <button id="copy" disabled>Copy Figma Specs</button>
+  <div id="feedback"></div>
+  <script>
+    const status = document.getElementById('status');
+    const output = document.getElementById('output');
+    const copy = document.getElementById('copy');
+    const feedback = document.getElementById('feedback');
+    const children = document.getElementById('children');
+    const ids = document.getElementById('ids');
+
+    function refresh() {
+      parent.postMessage({ pluginMessage: { type: 'refresh', includeChildren: children.checked, includeIds: ids.checked } }, '*');
+    }
+
+    children.onchange = refresh;
+    ids.onchange = refresh;
+    copy.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(output.value);
+      } catch (_) {
+        output.select();
+        document.execCommand('copy');
+      }
+      feedback.textContent = 'Copied to clipboard';
+      setTimeout(() => feedback.textContent = '', 1800);
+    };
+
+    window.onmessage = (event) => {
+      const message = event.data.pluginMessage;
+      if (!message || message.type !== 'selection') return;
+      status.textContent = message.name || message.message;
+      output.value = message.specs || '';
+      copy.disabled = !message.specs;
+    };
+  </script>
+</body>
+</html>
