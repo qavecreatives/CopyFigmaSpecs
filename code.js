@@ -152,15 +152,15 @@ async function nodeLines(node, includeIds) {
     return lines;
 }
 async function renderNode(node, includeChildren, includeIds, prefix = '', isLast = true, isRoot = true) {
-    const branch = isRoot ? '' : `${prefix}${isLast ? '└── ' : '├── '}`;
-    const lineIndent = isRoot ? '' : `${prefix}${isLast ? '    ' : '│   '}`;
+    const branch = isRoot ? '' : prefix + (isLast ? '└── ' : '├── ');
+    const lineIndent = isRoot ? '' : prefix + (isLast ? '    ' : '│   ');
     const result = [`${branch}${node.name}`];
     result.push(...(await nodeLines(node, includeIds)).map((line) => `${lineIndent}${line}`));
     if (includeChildren && 'children' in node) {
         const children = node.children;
         for (let index = 0; index < children.length; index += 1) {
             const child = children[index];
-            const childPrefix = isRoot ? '' : `${prefix}${isLast ? '    ' : '│   '}`;
+            const childPrefix = isRoot ? '' : prefix + (isLast ? '    ' : '│   ');
             result.push(...(await renderNode(child, true, includeIds, childPrefix, index === children.length - 1, false)));
         }
     }
