@@ -52,6 +52,20 @@ function add(lines: string[], label: string, value: unknown): void {
   if (hasValue(value)) lines.push(`${label}: ${String(value)}`);
 }
 
+function appliedStyle(lines: string[], label: string, id: unknown, includeIds: boolean): void {
+  if (typeof id !== 'string' || !id) return;
+  let style: unknown;
+  try {
+    const getStyleById = (figma as unknown as { getStyleById?: (styleId: string) => unknown }).getStyleById;
+    style = getStyleById?.(id);
+  } catch (_) {
+    style = undefined;
+  }
+  const name = textValue(get(style, 'name'));
+  add(lines, label, name ?? id);
+  if (includeIds && name) add(lines, `${label} ID`, id);
+}
+
 function formatEffect(effect: unknown): string | undefined {
   if (get(effect, 'visible') === false) return undefined;
   const type = get(effect, 'type');
@@ -93,6 +107,10 @@ function nodeLines(node: SceneNode, includeIds: boolean): string[] {
   if (record.layoutPositioning === 'ABSOLUTE') add(lines, 'Positioning', 'Absolute');
   add(lines, 'Fill', paints(record.fills));
   add(lines, 'Stroke', paints(record.strokes));
+  appliedStyle(lines, 'Fill style', record.fillStyleId, includeIds);
+  appliedStyle(lines, 'Stroke style', record.strokeStyleId, includeIds);
+  appliedStyle(lines, 'Effect style', record.effectStyleId, includeIds);
+  appliedStyle(lines, 'Layout grid style', record.gridStyleId, includeIds);
   add(lines, 'Stroke weight', px(record.strokeWeight));
   add(lines, 'Stroke alignment', textValue(record.strokeAlign));
   const radius = record.cornerRadius;
@@ -108,8 +126,9 @@ function nodeLines(node: SceneNode, includeIds: boolean): string[] {
     add(lines, 'Characters', node.characters);
     const style = record.style && typeof record.style === 'object' ? record.style as AnyRecord : {};
     const fontName = get(style, 'fontName');
-    add(lines, 'Font', textValue(get(fontName, 'family')));
-    add(lines, 'Style', textValue(get(fontName, 'style')));
+    add(lines, 'Font family', textValue(get(fontName, 'family')));
+    add(lines, 'Font style', textValue(get(fontName, 'style')));
+    appliedStyle(lines, 'Text style', record.textStyleId, includeIds);
     add(lines, 'Weight', textValue(style.fontWeight));
     add(lines, 'Size', px(style.fontSize));
     add(lines, 'Line height', lineHeight(style));

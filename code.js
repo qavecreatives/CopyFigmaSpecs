@@ -49,6 +49,22 @@ function add(lines, label, value) {
     if (hasValue(value))
         lines.push(`${label}: ${String(value)}`);
 }
+function appliedStyle(lines, label, id, includeIds) {
+    if (typeof id !== 'string' || !id)
+        return;
+    let style;
+    try {
+        const getStyleById = figma.getStyleById;
+        style = getStyleById?.(id);
+    }
+    catch (_) {
+        style = undefined;
+    }
+    const name = textValue(get(style, 'name'));
+    add(lines, label, name ?? id);
+    if (includeIds && name)
+        add(lines, `${label} ID`, id);
+}
 function formatEffect(effect) {
     if (get(effect, 'visible') === false)
         return undefined;
@@ -93,6 +109,10 @@ function nodeLines(node, includeIds) {
         add(lines, 'Positioning', 'Absolute');
     add(lines, 'Fill', paints(record.fills));
     add(lines, 'Stroke', paints(record.strokes));
+    appliedStyle(lines, 'Fill style', record.fillStyleId, includeIds);
+    appliedStyle(lines, 'Stroke style', record.strokeStyleId, includeIds);
+    appliedStyle(lines, 'Effect style', record.effectStyleId, includeIds);
+    appliedStyle(lines, 'Layout grid style', record.gridStyleId, includeIds);
     add(lines, 'Stroke weight', px(record.strokeWeight));
     add(lines, 'Stroke alignment', textValue(record.strokeAlign));
     const radius = record.cornerRadius;
@@ -109,8 +129,9 @@ function nodeLines(node, includeIds) {
         add(lines, 'Characters', node.characters);
         const style = record.style && typeof record.style === 'object' ? record.style : {};
         const fontName = get(style, 'fontName');
-        add(lines, 'Font', textValue(get(fontName, 'family')));
-        add(lines, 'Style', textValue(get(fontName, 'style')));
+        add(lines, 'Font family', textValue(get(fontName, 'family')));
+        add(lines, 'Font style', textValue(get(fontName, 'style')));
+        appliedStyle(lines, 'Text style', record.textStyleId, includeIds);
         add(lines, 'Weight', textValue(style.fontWeight));
         add(lines, 'Size', px(style.fontSize));
         add(lines, 'Line height', lineHeight(style));
