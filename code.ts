@@ -52,12 +52,12 @@ function add(lines: string[], label: string, value: unknown): void {
   if (hasValue(value)) lines.push(`${label}: ${String(value)}`);
 }
 
-function appliedStyle(lines: string[], label: string, id: unknown, includeIds: boolean): void {
+async function appliedStyle(lines: string[], label: string, id: unknown, includeIds: boolean): Promise<void> {
   if (typeof id !== 'string' || !id) return;
   let style: unknown;
   try {
-    const getStyleById = (figma as unknown as { getStyleById?: (styleId: string) => unknown }).getStyleById;
-    style = getStyleById?.(id);
+    const getStyleByIdAsync = (figma as unknown as { getStyleByIdAsync?: (styleId: string) => Promise<unknown> }).getStyleByIdAsync;
+    style = await getStyleByIdAsync?.(id);
   } catch (_) {
     style = undefined;
   }
@@ -78,7 +78,7 @@ function formatEffect(effect: unknown): string | undefined {
   return typeof type === 'string' ? titleCase(type) : undefined;
 }
 
-function nodeLines(node: SceneNode, includeIds: boolean): string[] {
+async function nodeLines(node: SceneNode, includeIds: boolean): Promise<string[]> {
   const record = node as unknown as AnyRecord;
   const lines: string[] = [];
   add(lines, 'Type', titleCase(node.type));
@@ -107,10 +107,10 @@ function nodeLines(node: SceneNode, includeIds: boolean): string[] {
   if (record.layoutPositioning === 'ABSOLUTE') add(lines, 'Positioning', 'Absolute');
   add(lines, 'Fill', paints(record.fills));
   add(lines, 'Stroke', paints(record.strokes));
-  appliedStyle(lines, 'Fill style', record.fillStyleId, includeIds);
-  appliedStyle(lines, 'Stroke style', record.strokeStyleId, includeIds);
-  appliedStyle(lines, 'Effect style', record.effectStyleId, includeIds);
-  appliedStyle(lines, 'Layout grid style', record.gridStyleId, includeIds);
+  await appliedStyle(lines, 'Fill style', record.fillStyleId, includeIds);
+  await appliedStyle(lines, 'Stroke style', record.strokeStyleId, includeIds);
+  await appliedStyle(lines, 'Effect style', record.effectStyleId, includeIds);
+  await appliedStyle(lines, 'Layout grid style', record.gridStyleId, includeIds);
   add(lines, 'Stroke weight', px(record.strokeWeight));
   add(lines, 'Stroke alignment', textValue(record.strokeAlign));
   const radius = record.cornerRadius;
@@ -123,59 +123,61 @@ function nodeLines(node: SceneNode, includeIds: boolean): string[] {
   effects.forEach((effect) => lines.push(effect));
 
   if (node.type === 'TEXT') {
-    add(lines, 'Characters', node.characters);
-    const style = record.style && typeof record.style === 'object' ? record.style as AnyRecord : {};
-    const fontName = get(style, 'fontName');
+    const textNode = node as unknown as AnyRecord;
+    add(lines, 'Characters', textNode.characters);
+    const fontName = textNode.fontName;
     add(lines, 'Font family', textValue(get(fontName, 'family')));
     add(lines, 'Font style', textValue(get(fontName, 'style')));
-    appliedStyle(lines, 'Text style', record.textStyleId, includeIds);
-    add(lines, 'Weight', textValue(style.fontWeight));
-    add(lines, 'Size', px(style.fontSize));
-    add(lines, 'Line height', lineHeight(style));
-    const letterSpacing = style.letterSpacing as AnyRecord | undefined;
+    add(lines, 'Weight', textValue(textNode.fontWeight));
+    add(lines, 'Size', px(textNode.fontSize));
+    const lineHeightData = textNode.lineHeight as AnyRecord | undefined;
+    add(lines, 'Line height', lineHeightData ? lineHeight(lineHeightData) : undefined);
+    const letterSpacing = textNode.letterSpacing as AnyRecord | undefined;
     if (letterSpacing && letterSpacing.unit === 'PIXELS') add(lines, 'Letter spacing', px(letterSpacing.value));
     else if (letterSpacing && hasValue(letterSpacing.value)) add(lines, 'Letter spacing', `${number(letterSpacing.value)}%`);
-    add(lines, 'Horizontal alignment', textValue(style.textAlignHorizontal));
-    add(lines, 'Vertical alignment', textValue(style.textAlignVertical));
-    add(lines, 'Case', textValue(style.textCase));
-    add(lines, 'Decoration', textValue(style.textDecoration));
-    add(lines, 'Paragraph indent', px(style.paragraphIndent));
-    add(lines, 'Paragraph spacing', px(style.paragraphSpacing));
-    add(lines, 'Text trimming', textValue(style.leadingTrim ?? style.textTruncation));
+    add(lines, 'Horizontal alignment', textValue(textNode.textAlignHorizontal));
+    add(lines, 'Vertical alignment', textValue(textNode.textAlignVertical));
+    add(lines, 'Case', textValue(textNode.textCase));
+    add(lines, 'Decoration', textValue(textNode.textDecoration));
+    add(lines, 'Paragraph indent', px(textNode.paragraphIndent));
+    add(lines, 'Paragraph spacing', px(textNode.paragraphSpacing));
+    add(lines, 'Text trimming', textValue(textNode.leadingTrim ?? textNode.textTruncation));
+    await appliedStyle(lines, 'Text style', textNode.textStyleId, includeIds);
   }
   return lines;
 }
 
-function renderNode(node: SceneNode, includeChildren: boolean, includeIds: boolean, prefix = '', isLast = true, isRoot = true): string[] {
+async function renderNode(node: SceneNode, includeChildren: boolean, includeIds: boolean, prefix = '', isLast = true, isRoot = true): Promise<string[]> {
   const branch = isRoot ? '' : `${prefix}${isLast ? '└── ' : '├── '}`;
   const lineIndent = isRoot ? '' : `${prefix}${isLast ? '    ' : '│   '}`;
   const result = [`${branch}${node.name}`];
-  result.push(...nodeLines(node, includeIds).map((line) => `${lineIndent}${line}`));
+  result.push(...(await nodeLines(node, includeIds)).map((line) => `${lineIndent}${line}`));
   if (includeChildren && 'children' in node) {
     const children = node.children as readonly SceneNode[];
-    children.forEach((child, index) => {
+    for (let index = 0; index < children.length; index += 1) {
+      const child = children[index];
       const childPrefix = isRoot ? '' : `${prefix}${isLast ? '    ' : '│   '}`;
-      result.push(...renderNode(child, true, includeIds, childPrefix, index === children.length - 1, false));
-    });
+      result.push(...(await renderNode(child, true, includeIds, childPrefix, index === children.length - 1, false)));
+    }
   }
   return result;
 }
 
-function sendSelection(includeChildren = true, includeIds = false): void {
+async function sendSelection(includeChildren = true, includeIds = false): Promise<void> {
   const selection = figma.currentPage.selection;
   if (selection.length !== 1) {
     figma.ui.postMessage({ type: 'selection', name: '', specs: '', message: selection.length ? 'Select exactly one layer.' : 'Select a layer to inspect.' });
     return;
   }
   const node = selection[0];
-  figma.ui.postMessage({ type: 'selection', name: node.name, specs: renderNode(node, includeChildren, includeIds).join('\n'), message: '' });
+  figma.ui.postMessage({ type: 'selection', name: node.name, specs: (await renderNode(node, includeChildren, includeIds)).join('\n'), message: '' });
 }
 
 figma.showUI(__html__, { width: 420, height: 640 });
-figma.on('selectionchange', () => sendSelection());
+figma.on('selectionchange', () => { void sendSelection(); });
 sendSelection();
 
 figma.ui.onmessage = (message: PluginMessage) => {
-  if (message.type === 'refresh') sendSelection(message.includeChildren, message.includeIds);
+  if (message.type === 'refresh') void sendSelection(message.includeChildren, message.includeIds);
   if (message.type === 'close') figma.closePlugin();
 };
