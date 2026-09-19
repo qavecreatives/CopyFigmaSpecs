@@ -10,8 +10,11 @@
     #status { margin-bottom: 14px; color: #CBE3FF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     label { display: block; margin: 9px 0; color: #CBE3FF; }
     input { margin-right: 7px; accent-color: #CBE3FF; }
-    textarea { width: 100%; height: 420px; resize: none; padding: 10px; border: 1px solid #CBE3FF; border-radius: 6px; color: #CBE3FF; background: #24191C; font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; }
-    button { width: 100%; margin-top: 12px; padding: 10px; border: 0; border-radius: 6px; color: #1A1113; background: #CBE3FF; font-weight: 600; cursor: pointer; }
+    textarea { width: 100%; height: 420px; resize: none; padding: 12px; border: 1px solid #CBE3FF; border-radius: 10px; color: #CBE3FF; background: #24191C; font: 12px/1.5 "Space Grotesk Mono", ui-monospace, SFMono-Regular, Consolas, monospace; }
+    button { width: 100%; margin-top: 14px; padding: 12px 18px; border: 0; border-radius: 999px; color: #1A1113; background: #CBE3FF; font: 500 12px/1.2 "Space Grotesk", Inter, system-ui, sans-serif; cursor: pointer; transition: background .16s ease, transform .16s ease, box-shadow .16s ease; }
+    button:hover:not(:disabled) { background: #E2F0FF; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(203, 227, 255, .16); }
+    button:active:not(:disabled) { background: #B7D4F2; transform: translateY(0); box-shadow: none; }
+    button:focus-visible { outline: 2px solid #CBE3FF; outline-offset: 3px; }
     button:disabled { opacity: .45; cursor: default; }
     #feedback { min-height: 18px; margin-top: 8px; color: #CBE3FF; text-align: center; }
   </style>
