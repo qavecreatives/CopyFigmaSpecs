@@ -38,3 +38,9 @@ We recommend writing TypeScript code using Visual Studio code:
     you reopen Visual Studio Code.
 
 That's it! Visual Studio Code will regenerate the JavaScript file every time you save.
+
+## Output modes
+
+Copy Figma Specs has two output modes. `Figma Specs` preserves Figma terminology and the selected layer hierarchy. `HTML + CSS` generates a combined preview with HTML first and CSS second, using sanitized layer names as class names.
+
+In HTML + CSS mode, `Copy HTML` copies only the HTML section and `Copy CSS` copies only the CSS section. The CSS formatter emits direct web equivalents for dimensions, auto layout, spacing, fills, strokes, radius, text typography, and supported effects. Figma-only properties and unsupported paint types are omitted.

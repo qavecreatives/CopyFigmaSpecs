@@ -4,7 +4,7 @@
   "description": "Copy structured Figma properties as human-readable text.",
   "main": "code.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/bundle.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "watch": "npm run build -- --watch",
