@@ -13,7 +13,13 @@
     label { display: block; margin: 9px 0; color: #CBE3FF; }
     input { margin-right: 7px; accent-color: #CBE3FF; }
     textarea { width: 100%; height: 420px; resize: none; padding: 12px; border: 1px solid #CBE3FF; border-radius: 10px; color: #CBE3FF; background: #24191C; font: 12px/1.5 "Space Grotesk Mono", ui-monospace, SFMono-Regular, Consolas, monospace; }
-    button { width: 100%; margin-top: 14px; padding: 12px 18px; border: 0; border-radius: 999px; color: #1A1113; background: #CBE3FF; font: 500 12px/1.2 "Space Grotesk", Inter, system-ui, sans-serif; cursor: pointer; transition: background .16s ease, transform .16s ease, box-shadow .16s ease; }
+    .mode-switch { display: flex; gap: 4px; margin: 0 0 12px; padding: 3px; border: 1px solid #5A4148; border-radius: 999px; background: #24191C; }
+    .mode-button { flex: 1; margin: 0; padding: 8px 10px; color: #CBE3FF; background: transparent; box-shadow: none; transform: none; }
+    .mode-button:hover:not(:disabled) { color: #1A1113; background: #B7D4F2; transform: none; box-shadow: none; }
+    .mode-button.active { color: #1A1113; background: #CBE3FF; }
+    .mode-button.active:hover:not(:disabled) { background: #E2F0FF; }
+    .copy-actions { display: flex; gap: 8px; }
+    .copy-actions button { flex: 1; }    button { width: 100%; margin-top: 14px; padding: 12px 18px; border: 0; border-radius: 999px; color: #1A1113; background: #CBE3FF; font: 500 12px/1.2 "Space Grotesk", Inter, system-ui, sans-serif; cursor: pointer; transition: background .16s ease, transform .16s ease, box-shadow .16s ease; }
     button:hover:not(:disabled) { background: #E2F0FF; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(203, 227, 255, .16); }
     button:active:not(:disabled) { background: #B7D4F2; transform: translateY(0); box-shadow: none; }
     button:focus-visible { outline: 2px solid #CBE3FF; outline-offset: 3px; }
@@ -24,42 +30,82 @@
 <body>
   <h1>Copy Figma Specs</h1>
   <div id="status">Select a layer to inspect.</div>
+  <div class="mode-switch" role="group" aria-label="Output mode">
+    <button id="mode-specs" class="mode-button active" type="button" aria-pressed="true">Figma Specs</button>
+    <button id="mode-code" class="mode-button" type="button" aria-pressed="false">HTML + CSS</button>
+  </div>
   <label><input id="children" type="checkbox" checked> Include children</label>
   <label><input id="ids" type="checkbox"> Include layer IDs</label>
   <textarea id="output" readonly placeholder="Your Figma specs will appear here."></textarea>
-  <button id="copy" disabled>Copy Figma Specs</button>
+  <div id="specs-actions" class="copy-actions">
+    <button id="copy-specs" disabled>Copy Figma Specs</button>
+  </div>
+  <div id="code-actions" class="copy-actions" hidden>
+    <button id="copy-html" disabled>Copy HTML</button>
+    <button id="copy-css" disabled>Copy CSS</button>
+  </div>
   <div id="feedback"></div>
   <script>
     const status = document.getElementById('status');
     const output = document.getElementById('output');
-    const copy = document.getElementById('copy');
     const feedback = document.getElementById('feedback');
     const children = document.getElementById('children');
     const ids = document.getElementById('ids');
+    const specsActions = document.getElementById('specs-actions');
+    const codeActions = document.getElementById('code-actions');
+    const modeSpecs = document.getElementById('mode-specs');
+    const modeCode = document.getElementById('mode-code');
+    const copySpecs = document.getElementById('copy-specs');
+    const copyHtml = document.getElementById('copy-html');
+    const copyCss = document.getElementById('copy-css');
+    let mode = 'specs';
+    let current = { specs: '', html: '', css: '' };
 
     function refresh() {
       parent.postMessage({ pluginMessage: { type: 'refresh', includeChildren: children.checked, includeIds: ids.checked } }, '*');
     }
 
-    children.onchange = refresh;
-    ids.onchange = refresh;
-    copy.onclick = async () => {
+    function setMode(nextMode) {
+      mode = nextMode;
+      const codeMode = mode === 'html-css';
+      modeSpecs.classList.toggle('active', !codeMode);
+      modeCode.classList.toggle('active', codeMode);
+      modeSpecs.setAttribute('aria-pressed', String(!codeMode));
+      modeCode.setAttribute('aria-pressed', String(codeMode));
+      specsActions.hidden = codeMode;
+      codeActions.hidden = !codeMode;
+      output.value = codeMode ? [current.html, current.css].filter(Boolean).join('\n\n') : current.specs;
+      copySpecs.disabled = !current.specs;
+      copyHtml.disabled = !current.html;
+      copyCss.disabled = !current.css;
+    }
+
+    async function copyValue(value) {
+      if (!value) return;
       try {
-        await navigator.clipboard.writeText(output.value);
+        await navigator.clipboard.writeText(value);
       } catch (_) {
         output.select();
         document.execCommand('copy');
       }
       feedback.textContent = 'Copied to clipboard';
       setTimeout(() => feedback.textContent = '', 1800);
-    };
+    }
+
+    modeSpecs.onclick = () => setMode('specs');
+    modeCode.onclick = () => setMode('html-css');
+    children.onchange = refresh;
+    ids.onchange = refresh;
+    copySpecs.onclick = () => copyValue(current.specs);
+    copyHtml.onclick = () => copyValue(current.html);
+    copyCss.onclick = () => copyValue(current.css);
 
     window.onmessage = (event) => {
       const message = event.data.pluginMessage;
       if (!message || message.type !== 'selection') return;
       status.textContent = message.name || message.message;
-      output.value = message.specs || '';
-      copy.disabled = !message.specs;
+      current = { specs: message.specs || '', html: message.html || '', css: message.css || '' };
+      setMode(mode);
     };
   </script>
 </body>
