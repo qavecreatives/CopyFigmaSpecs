@@ -1,3 +1,5 @@
+import { buildSnapshot, formatHtmlCss } from './formatters'
+
 type PluginMessage =
   | { type: 'refresh'; includeChildren: boolean; includeIds: boolean }
   | { type: 'close' };
@@ -166,11 +168,12 @@ async function renderNode(node: SceneNode, includeChildren: boolean, includeIds:
 async function sendSelection(includeChildren = true, includeIds = false): Promise<void> {
   const selection = figma.currentPage.selection;
   if (selection.length !== 1) {
-    figma.ui.postMessage({ type: 'selection', name: '', specs: '', message: selection.length ? 'Select exactly one layer.' : 'Select a layer to inspect.' });
+    figma.ui.postMessage({ type: 'selection', name: '', specs: '', html: '', css: '', message: selection.length ? 'Select exactly one layer.' : 'Select a layer to inspect.' });
     return;
   }
   const node = selection[0];
-  figma.ui.postMessage({ type: 'selection', name: node.name, specs: (await renderNode(node, includeChildren, includeIds)).join('\n'), message: '' });
+  const htmlCss = formatHtmlCss(await buildSnapshot(node, includeChildren));
+  figma.ui.postMessage({ type: 'selection', name: node.name, specs: (await renderNode(node, includeChildren, includeIds)).join('\\n'), html: htmlCss.html, css: htmlCss.css, message: '' });
 }
 
 figma.showUI(__html__, { width: 420, height: 640 });
