@@ -430,7 +430,7 @@ async function sendSelection(includeChildren = true, includeIds = false) {
     }
     const node = selection[0];
     const htmlCss = formatHtmlCss(await buildSnapshot(node, includeChildren));
-    figma.ui.postMessage({ type: 'selection', name: node.name, specs: (await renderNode(node, includeChildren, includeIds)).join('\\n'), html: htmlCss.html, css: htmlCss.css, message: '' });
+    figma.ui.postMessage({ type: 'selection', name: node.name, specs: (await renderNode(node, includeChildren, includeIds)).join('\n'), html: htmlCss.html, css: htmlCss.css, message: '' });
 }
 figma.showUI(__html__, { width: 420, height: 640 });
 figma.on('selectionchange', () => { void sendSelection(); });
